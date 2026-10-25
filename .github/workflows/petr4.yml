@@ -1,0 +1,51 @@
+name: Monitor PETR4
+
+on:
+  schedule:
+    # Cron do GitHub é sempre em UTC. 13-20 UTC = 10h às 17h59 em Brasília (UTC-3).
+    - cron: "*/5 13-20 * * 1-5"
+  workflow_dispatch: # permite rodar manualmente pela aba Actions
+
+# Evita duas execuções ao mesmo tempo mexendo no mesmo banco
+concurrency:
+  group: petr4-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install feedparser requests
+
+      # O runner começa vazio a cada execução, então o banco de "já vistos"
+      # é guardado no cache do GitHub entre uma rodada e outra.
+      - name: Restaurar banco de itens já vistos
+        uses: actions/cache/restore@v4
+        with:
+          path: petr4_seen.db
+          key: petr4-db-${{ github.run_id }}
+          restore-keys: petr4-db-
+
+      - name: Rodar monitor
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }} # opcional
+          PRICE_THRESHOLD_PCT: "1.5"
+        run: python petr4_news.py
+
+      - name: Salvar banco de itens já vistos
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: petr4_seen.db
+          key: petr4-db-${{ github.run_id }}
