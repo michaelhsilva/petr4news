@@ -19,6 +19,7 @@ Na primeira execução, as notícias já existentes são só registradas
 
 import argparse
 import html
+import json
 import os
 import sqlite3
 import sys
@@ -153,21 +154,31 @@ def fetch_items() -> list[dict]:
 # ----------------------------------------------------------------------
 # Notificação (Telegram)
 # ----------------------------------------------------------------------
-def send_text(text: str) -> bool:
-    """Envia um texto (HTML) para o chat configurado no Telegram."""
+def send_text(text: str, button: tuple[str, str] | None = None) -> bool:
+    """Envia um texto (HTML) para o chat configurado no Telegram.
+
+    button: opcional, (rótulo, url) -> aparece como botão abaixo da mensagem.
+    """
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("[erro] defina TELEGRAM_TOKEN e TELEGRAM_CHAT_ID.", file=sys.stderr)
         return False
 
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": "true",  # o botão já leva ao link
+    }
+    if button:
+        label, url = button
+        payload["reply_markup"] = json.dumps(
+            {"inline_keyboard": [[{"text": label, "url": url}]]}
+        )
+
     try:
         resp = requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            data={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": text,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": "false",
-            },
+            data=payload,
             timeout=15,
         )
         if resp.status_code == 429:  # limite do Telegram
@@ -189,7 +200,7 @@ def send_telegram(item: dict) -> bool:
     return send_text(
         f"📰 <b>{html.escape(item['title'])}</b>\n"
         f"<i>{html.escape(item['source'])}</i>",
-        f"button=('🔗 Ler notícia', {item['link']})",
+        button=("🔗 Ler notícia", item["link"]),
     )
 
 
