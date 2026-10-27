@@ -189,7 +189,7 @@ def send_telegram(item: dict) -> bool:
     return send_text(
         f"📰 <b>{html.escape(item['title'])}</b>\n"
         f"<i>{html.escape(item['source'])}</i>",
-        button=("🔗 Ler notícia", item["link"]),
+        f"button=('🔗 Ler notícia', {item['link']})",
     )
 
 
