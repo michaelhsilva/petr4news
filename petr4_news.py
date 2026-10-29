@@ -198,7 +198,7 @@ def send_text(text: str, button: tuple[str, str] | None = None) -> bool:
 def send_telegram(item: dict) -> bool:
     """Formata e envia uma notícia."""
     return send_text(
-        f"📰 <b>{html.escape(item['title'])}</b>",
+        f"<b>{html.escape(item['title'])}</b>",
         button=("🔗 Ler notícia", item["link"]),
     )
 
